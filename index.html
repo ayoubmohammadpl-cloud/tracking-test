@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>تتبع الطلب</title>
+<title>تتبع الطلب التجريبي</title>
 <style>
   #map { height: 500px; width: 100%; }
   #info { margin: 10px; font-size: 18px; }
@@ -11,71 +11,31 @@
 <body>
 
 <div id="info">
-  <div>Order ID: <span id="orderId"></span></div>
-  <div>Status: <span id="orderStatus"></span></div>
-  <div id="countdown">الوقت المتبقي: </div>
+  <div>Order ID: <span id="orderId">test123</span></div>
+  <div>Status: <span id="orderStatus">Unterwegs</span></div>
+  <div id="countdown">وقت الوصول: </div>
 </div>
 <div id="map"></div>
 
-<!-- Google Maps API -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDipzUmxEQmAjaDkn6xQ91ZhqnkPmgl-2o"></script>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
-
-// إعداد Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyCUiy2nF3V_Z4V3k0MbfyRGuGoBBp6uACE",
-  authDomain: "taussil-tracking.firebaseapp.com",
-  databaseURL: "https://taussil-tracking-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "taussil-tracking",
-  storageBucket: "taussil-tracking.firebasestorage.app",
-  messagingSenderId: "733589615357",
-  appId: "1:733589615357:web:1926206637b7af263ac494"
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-// قراءة RowID من الرابط (مثلاً ?rowId=test123)
-const urlParams = new URLSearchParams(window.location.search);
-const ROW_ID = urlParams.get('rowId') || 'test123';
-document.getElementById("orderId").innerText = ROW_ID;
-
-// إعداد الخريطة
+<script>
 let map, driverMarker, restaurantMarker, directionsService, directionsRenderer;
+
 function initMap() {
+  const driverPos = { lat: 54.326387, lng: 10.134567 };
+  const restaurantPos = { lat: 54.322000, lng: 10.140000 };
+
   map = new google.maps.Map(document.getElementById("map"), {
     zoom: 14,
-    center: { lat: 54.324, lng: 10.137 } // مركز أولي
+    center: driverPos
   });
+
   directionsService = new google.maps.DirectionsService();
   directionsRenderer = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
-}
-initMap();
 
-const driverIcon = "https://maps.google.com/mapfiles/kml/shapes/cabs.png";
-const restaurantIcon = "https://maps.google.com/mapfiles/kml/shapes/dining.png";
+  driverMarker = new google.maps.Marker({ position: driverPos, map, title: "سائق", icon: "https://maps.google.com/mapfiles/kml/shapes/cabs.png" });
+  restaurantMarker = new google.maps.Marker({ position: restaurantPos, map, title: "مطعم", icon: "https://maps.google.com/mapfiles/kml/shapes/dining.png" });
 
-const orderRef = ref(db, ROW_ID);
-let countdownInterval, alerted = false, acceptedAlerted = false;
-
-onValue(orderRef, (snapshot) => {
-  const data = snapshot.val();
-  if (!data) return;
-
-  document.getElementById("orderStatus").innerText = data.Status;
-
-  // تحويل النصوص للإحداثيات أرقام
-  const driverPos = { lat: parseFloat(data.DriverLocationLat), lng: parseFloat(data.DriverLocationLng) };
-  const restaurantPos = { lat: parseFloat(data.RestaurantLat), lng: parseFloat(data.RestaurantLng) };
-
-  if (!driverMarker) driverMarker = new google.maps.Marker({ position: driverPos, map, icon: driverIcon, title: "سائق" });
-  else driverMarker.setPosition(driverPos);
-
-  if (!restaurantMarker) restaurantMarker = new google.maps.Marker({ position: restaurantPos, map, icon: restaurantIcon, title: "مطعم" });
-
-  // رسم الطريق
   directionsService.route({
     origin: driverPos,
     destination: restaurantPos,
@@ -84,27 +44,19 @@ onValue(orderRef, (snapshot) => {
     if (status === 'OK') directionsRenderer.setDirections(result);
   });
 
-  // عداد تنازلي
-  if (countdownInterval) clearInterval(countdownInterval);
-  let remaining = parseInt(data.DurationValue); // بالثواني
+  // عداد تنازلي تجريبي
+  let remaining = 720; // 12 دقيقة
   const countdownDiv = document.getElementById("countdown");
-  countdownInterval = setInterval(() => {
-    if (remaining < 0) { 
-      countdownDiv.innerText = "تم الوصول!";
-      clearInterval(countdownInterval); 
-      return; 
-    }
+  const interval = setInterval(() => {
+    if (remaining < 0) { countdownDiv.innerText = "تم الوصول!"; clearInterval(interval); return; }
     const minutes = Math.floor(remaining / 60);
     const seconds = remaining % 60;
     countdownDiv.innerText = الوقت المتبقي: ${minutes} دقيقة و ${seconds} ثانية;
-
-    // تنبيهات صوتية
-    if (!alerted && remaining <= 60) { new Audio('angeommen.mp3').play(); alerted = true; }
-    if (!acceptedAlerted && data.Status === "Unterwegs") { new Audio('unterwegs.mp3').play(); acceptedAlerted = true; }
-
     remaining--;
   }, 1000);
-});
+}
+
+initMap();
 </script>
 </body>
 </html>
